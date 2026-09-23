@@ -4,43 +4,31 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
+  url = env("DATABASE_URL")
 }
 
 model Profile {
-  id        Int       @id @default(autoincrement())
-  name      String
-  email     String
-  bio       String?
-  projects  Project[]
-}
-
-model Project {
-  id            Int          @id @default(autoincrement())
-  title         String
-  description   String?
-  repositoryUrl String
-  profileId     Int
-  upvotes       Int          @default(0)
-  averageRating Float        @default(0)
-
-  profile       Profile      @relation(fields: [profileId], references: [id])
-  technologies  Technology[]
-  feedbacks     Feedback[]
-}
-
-model Technology {
-  id       Int       @id @default(autoincrement())
-  name     String    @unique
+  id Int @id @default(autoincrement())
+  name String
+  email String @unique
+  bio String?
   projects Project[]
 }
 
-model Feedback {
-  id        Int      @id @default(autoincrement())
-  rating    Int
-  comment   String
-  author    String
-  projectId Int
+model Technology {
+  id Int @id @default(autoincrement())
+  name String @unique
+  projects Project[] @relation("ProjectTechnologies")
+}
 
-  project   Project  @relation(fields: [projectId], references: [id])
+model Project {
+  id Int @id @default(autoincrement())
+  title String
+  description String
+  repositoryUrl String
+  upvotes Int @default(0)
+  profileId Int
+  profile Profile @relation(fields: [profileId], references: [id])
+  technologies Technology[] @relation("ProjectTechnologies")
+  createdAt DateTime @default(now())
 }
