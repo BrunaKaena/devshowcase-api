@@ -1,68 +1,39 @@
 const express = require('express');
 const router = express.Router();
-
 const feedbackRepository = require('../repositories/feedback.repository');
+const { validateFeedbackInput } = require('../dtos/FeedbackDTO');
 
 router.post('/', async (req, res) => {
+  const error = validateFeedbackInput(req.body);
+  if (error) return res.status(400).json({ error });
+  
   try {
-    const { comment, author, projectId } = req.body;
+    const feedback = await feedbackRepository.create(req.body);
+    res.status(201).json({ mensagem: 'Feedback cadastrado com sucesso!', feedback });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
 
-    if (!comment || comment.trim() === '') {
-      return res.status(400).json({
-        erro: 'O comentário é obrigatório.'
-      });
-    }
-
-    if (!author || author.trim() === '') {
-      return res.status(400).json({
-        erro: 'O autor é obrigatório.'
-      });
-    }
-
-    if (!projectId || !Number.isInteger(Number(projectId))) {
-      return res.status(400).json({
-        erro: 'O ID do projeto deve ser um número.'
-      });
-    }
-
-    const feedback = await feedbackRepository.create({
-      comment,
-      author,
-      projectId: Number(projectId)
-    });
-
-    return res.status(201).json({
-      mensagem: 'Feedback cadastrado com sucesso!',
-      feedback
-    });
-  } catch (error) {
-    console.error(error);
-
-    return res.status(500).json({
-      erro: 'Erro interno ao cadastrar o feedback.'
-    });
+router.post('/project/:projectId', async (req, res) => {
+  const data = { ...req.body, projectId: Number(req.params.projectId) };
+  const error = validateFeedbackInput(data);
+  if (error) return res.status(400).json({ error });
+  
+  try {
+    const feedback = await feedbackRepository.create(data);
+    res.status(201).json({ mensagem: 'Feedback cadastrado com sucesso!', feedback });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 });
 
 router.get('/project/:projectId', async (req, res) => {
   try {
-    const projectId = Number(req.params.projectId);
-
-    if (!Number.isInteger(projectId)) {
-      return res.status(400).json({
-        erro: 'O ID do projeto deve ser um número.'
-      });
-    }
-
-    const feedbacks = await feedbackRepository.findByProjectId(projectId);
-
-    return res.status(200).json(feedbacks);
-  } catch (error) {
-    console.error(error);
-
-    return res.status(500).json({
-      erro: 'Erro interno ao buscar os feedbacks.'
-    });
+    const feedbacks = await feedbackRepository.findByProjectId(Number(req.params.projectId));
+    res.json(feedbacks);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 });
 

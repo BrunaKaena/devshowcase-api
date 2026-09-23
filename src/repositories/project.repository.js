@@ -1,43 +1,33 @@
-const prisma = require('../database');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
-async function create(data) {
-  return prisma.project.create({
+module.exports = {
+  create: (data) => prisma.project.create({
     data: {
       title: data.title,
       description: data.description || null,
       repositoryUrl: data.repositoryUrl,
-      profile: {
-        connect: {
-          id: data.profileId
-        }
-      },
-      technologies: {
-        connect: data.technologyIds.map((id) => ({
-          id
-        }))
-      }
+      profileId: Number(data.profileId),
+      technologies: data.technologyIds && data.technologyIds.length > 0 
+        ? { connect: data.technologyIds.map(id => ({ id: Number(id) })) } 
+        : undefined
     },
-    include: {
-      profile: true,
-      technologies: true
-    }
-  });
-}
+    include: { technologies: true }
+  }),
 
-async function findAll() {
-  return prisma.project.findMany({
-    include: {
-      profile: true,
-      technologies: true,
-      feedbacks: true
-    },
-    orderBy: {
-      id: 'asc'
-    }
-  });
-}
+  findById: (id) => prisma.project.findUnique({ 
+    where: { id: Number(id) }, 
+    include: { technologies: true, feedbacks: true, profile: true } 
+  }),
 
-module.exports = {
-  create,
-  findAll
+  findAll: async ({ page, limit, technology }) => {
+    const where = technology ? { technologies: { some: { name: { contains: technology } } } } : {};
+    const [projects, total] = await Promise.all([
+      prisma.project.findMany({ where, skip: (page-1)*limit, take: limit, include: { technologies: true, profile: true } }),
+      prisma.project.count({ where })
+    ]);
+    return { data: projects, total, page, limit };
+  },
+
+  upvote: (id) => prisma.project.update({ where: { id: Number(id) }, data: { upvotes: { increment: 1 } } })
 };
